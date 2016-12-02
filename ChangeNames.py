@@ -1,6 +1,12 @@
 # ChangeNames.py
+# Dependencies: ui_ChangeNames.py
 # Written By: DJH
 # Creation Date: 23 May 2016
+
+# Edited 12/2/206
+# --> Added error handling during renaming to account for attempts to over-write files [WinError 183]
+# --> Added more defined paths to os.rename portion of script to avoid issues with path errors
+# --> Made loops more pythonic
 
 # This program will search for all files within a folder that contain the "old String" and
 # replace that portion of the filename with a "New String". Checkbox allows option to preview changes
@@ -69,14 +75,12 @@ class MyApp(QtGui.QMainWindow, Ui_MainWindow):
             self.textBrowser_Terminal.append("There are no Files in the selected directory which contain the Old String that was entered")
             self.textBrowser_Terminal.append("Note: Changes to file names are case-sensitive")
 
-        elif len(files) != 0:
+        else:
             max_length = max(string_lengths)
-            print(max_length)
 
-            if self.checkBox_Preview.isChecked() == True:
+            if self.checkBox_Preview.isChecked():
                 # preview filename changes in the textBrowser window without actually renaming files
-                for i in range(0, len(files)):
-                    filename_old = files[i]
+                for filename_old in files:
                     filename_new = filename_old.replace(old, new)
                     # display preview of filename changes
                     self.textBrowser_Terminal.append(filename_old.ljust(max_length) + "    >>>    " + filename_new + "\t***PREVIEW***")
@@ -84,16 +88,28 @@ class MyApp(QtGui.QMainWindow, Ui_MainWindow):
 
                 self.textBrowser_Terminal.append('\n' + str(filecount) + "  Total files found containing the old string")
                 self.textBrowser_Terminal.append("To make previewed changes to filenames, un-check the 'preview' box and \nre-click the 'change names' button")
+                self.textBrowser_Terminal.append("Note: changes will not be made if new file name already exists")
                 self.textBrowser_Terminal.append("****************************************************************************" + '\n\n')
 
-            elif self.checkBox_Preview.isChecked() != True:
-                for i in range(0, len(files)):
-                    filename_old = files[i]
+            else:
+                # if preview is not checked, we will actually rename files!
+                # added error handling to account for user trying to over-write files
+                for filename_old in files:
                     filename_new = filename_old.replace(old, new)
-                    os.rename(filename_old, filename_new)
-                    # display file renaming to terminal window
-                    self.textBrowser_Terminal.append(filename_old.ljust(max_length) + "    >>>    " + filename_new)
-                    filecount += 1
+                    # os.rename(filename_old, filename_new) #old line of code
+                    # os.rename(os.path.join(fp, filename_old), os.path.join(fp, filename_new))  # new does this fix bug??
+
+                    # Don't know how to use exceptions yet....
+                    try:
+                        os.rename(os.path.join(fp, filename_old), os.path.join(fp, filename_new))
+                        self.textBrowser_Terminal.append(filename_old.ljust(max_length) + "    >>>    " + filename_new)
+                        filecount += 1
+                    except OSError as e:
+                        # error_message = e
+                        print('Exception Thrown')
+                        print(e)
+                        self.textBrowser_Terminal.append('Exception Thrown: Cannot overwrite file that already exists')
+                        self.textBrowser_Terminal.append(filename_old.ljust(max_length) + "    >>>    " + filename_new + "\t ***ERROR***")
 
                 # display output summary message
                 self.textBrowser_Terminal.append('\n' + str(filecount) + "  Total files renamed in the selected folder:")
